@@ -1,0 +1,19 @@
+<launch>
+    <arg name="cloud_topic" default="/passthrough_z/output"/>
+    <arg name="cropbox_minx" default="0.0"/>
+    <arg name="cropbox_miny" default="-2.0"/>
+    <arg name="cropbox_minz" default="-2.0"/>
+    <arg name="cropbox_maxx" default="5.0"/>
+    <arg name="cropbox_maxy" default="2.0"/>
+    <arg name="cropbox_maxz" default="0.0"/>
+    
+    <node name="plane_segmenter" pkg="surface_normals" type="extract_planes_node">
+        <param name="cloud_topic" value="$(arg cloud_topic)"/>
+        <param name="cropbox_minx" value="$(arg cropbox_minx)"/>
+        <param name="cropbox_miny" value="$(arg cropbox_miny)"/>
+        <param name="cropbox_minz" value="$(arg cropbox_minz)"/>
+        <param name="cropbox_maxx" value="$(arg cropbox_maxx)"/>
+        <param name="cropbox_maxy" value="$(arg cropbox_maxy)"/>
+        <param name="cropbox_maxz" value="$(arg cropbox_maxz)"/>
+    </node> 
+</launch>

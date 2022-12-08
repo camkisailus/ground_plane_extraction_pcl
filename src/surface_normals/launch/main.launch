@@ -1,0 +1,27 @@
+<launch>
+    
+  <!-- Launch parameterized nodelets -->
+  <include file="$(find surface_normals)/launch/surface_element.launch"/>
+  <include file="$(find surface_normals)/launch/plane_seg.launch"/>
+  <node type="rviz" name="rviz" pkg="rviz" args="-d /home/cuhsailus/Desktop/Research/22_academic_year/surface_normals/rviz_config/main.rviz" output="log"/>
+  
+
+  <!-- <include file="$(find surface_normals)/launch/surface_element.launch">
+    <arg name="surfel_id" value="1"/>
+    <arg name="crop_miny" default="0.25"/>
+    <arg name="crop_maxy" default="0.75"/>
+  </include>
+
+  <include file="$(find surface_normals)/launch/surface_element.launch">
+    <arg name="surfel_id" value="2"/>
+    <arg name="crop_miny" default="-0.75"/>
+    <arg name="crop_maxy" default="-0.25"/>
+  </include>
+
+  <include file="$(find surface_normals)/launch/surface_element.launch">
+    <arg name="surfel_id" value="3"/>
+    <arg name="crop_minx" default="2.5"/>
+    <arg name="crop_maxx" default="2.75"/>
+  </include> -->
+
+</launch>

@@ -1,0 +1,13 @@
+.vscode/
+devel/
+build/
+normal_pcd/
+bags/
+logs/
+normals/
+out/
+out_pcds/
+rviz_config/
+voxel/
+voxel_pcd/
+.catkin_tools/
