@@ -51,7 +51,8 @@ find_package(PCL 1.2 REQUIRED)
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  SurfaceElement.msg
+  Plane.msg
+  PlaneArray.msg
   )
 
   ## Generate services in the 'srv' folder
@@ -71,6 +72,7 @@ add_message_files(
     ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
+  sensor_msgs
   std_msgs
 )
       

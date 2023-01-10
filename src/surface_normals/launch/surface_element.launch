@@ -39,7 +39,7 @@
 
   <!-- Compute the convex hull -->
   <!-- <node pkg="nodelet" type="nodelet" name="convex_hull_$(arg surfel_id)" args="load pcl/ConvexHull2D pcl_manager_$(arg surfel_id)" output="log">
-    <remap from="~input"   to="/plane_segmenter/kisalus_filtered_plane_output" />
+    <remap from="~input"   to="/plane_segmenter/kisailus_filtered_plane_output" />
   </node> -->
   <!-- Extract slope-->
   <!-- <node pkg="surface_normals" type="main.py" name="plane_fit_$(arg surfel_id)" output="screen">

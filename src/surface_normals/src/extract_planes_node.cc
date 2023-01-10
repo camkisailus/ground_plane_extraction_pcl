@@ -2,6 +2,9 @@
 #include <iostream>
 #include <pcl-1.8/pcl/io/pcd_io.h>
 #include "extract_planes_node.hh"
+#include "pcl-1.8/pcl/surface/convex_hull.h"
+#include <geometry_msgs/Point32.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
 #define PI 3.14159265
 
 
@@ -53,29 +56,17 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
         
         pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
         normal_estimator_.setSearchMethod(tree);
-        
-        // std::stringstream ss2;
-        // ss2 << "/home/cuhsailus/Desktop/Research/22_academic_year/surface_normals/out_pcds/cropped_and_filtered.pcd";
-        // writer_.write<pcl::PointXYZ> (ss2.str(), *cloud_filtered, false);
         normal_estimator_.setInputCloud(cloud_filtered);
         pcl::PointCloud<pcl::Normal>::Ptr cloud_normals(new pcl::PointCloud<pcl::Normal>), cloud_n (new pcl::PointCloud<pcl::Normal>);;
         normal_estimator_.setRadiusSearch(0.03);
         normal_estimator_.compute(*cloud_normals);
-        // ss3 << "/home/cuhsailus/Desktop/Research/22_academic_year/surface_normals/out_pcds/iter_"<<counter_<<"_" << i << ".pcd";
-        // writer_.write<pcl::PointXYZ> (ss3.str(), *cloud_p, false);3;
-        // ss3 << "/home/cuhsailus/Desktop/Research/22_academic_year/surface_normals/out_pcds/iter_"<<counter_<<"_" << i << ".pcd";
-        // writer_.write<pcl::PointXYZ> (ss3.str(), *cloud_p, false);
-        // ss3 << "/home/cuhsailus/Desktop/Research/22_academic_year/surface_normals/out_pcds/iter_"<<counter_<<"_" << i << ".pcd";
-        // writer_.write<pcl::PointXYZ> (ss3.str(), *cloud_p, false);3;
-        // ss3 << "/home/cuhsailus/Desktop/Research/22_academic_year/surface_normals/out_pcds/iter_"<<counter_<<"_" << i << ".pcd";
-        // writer_.write<pcl::PointXYZ> (ss3.str(), *cloud_p, false);
         int i = 0, nr_points = (int) cloud_filtered->size();
+        std::vector<sensor_msgs::PointCloud2> clouds_to_publish;
         sensor_msgs::PointCloud2 cloud_out;
         sensor_msgs::PointCloud2 cloud_filtered_out;
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_projected(new pcl::PointCloud<pcl::PointXYZ>);
-        // std::string foo = "Full cloud size = "+std::to_string(nr_points);
-        // ROS_WARN_STREAM(foo);
-        while(cloud_filtered->size() > 0.01*nr_points)
+        surface_normals::PlaneArray plane_arr_msg;
+        while(cloud_filtered->size() > 0.03*nr_points)
         {
             pcl::ModelCoefficients::Ptr coeffs (new pcl::ModelCoefficients());
             pcl::PointIndices::Ptr inliers (new pcl::PointIndices());
@@ -87,10 +78,14 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
             // ROS_WARN_STREAM(msg);
             Eigen::Vector3f normal(coeffs->values[0], coeffs->values[1], coeffs->values[2]);
             float angle = (acos(Eigen::Vector3f::UnitZ().dot(normal))* 180.0 / PI);
+            surface_normals::Plane plane_msg;
+            plane_msg.header.frame_id = "camera_base";
+            plane_msg.slope = angle;
             std::string color;
             if(i == 0){
                 color = "red";
             }else{
+                // break;
                 color="purple";
             }
             ROS_WARN_STREAM("Iter : "<< i << +" Size: "<< inliers->indices.size() <<" Angle: "<<angle<< " Color: "<<color);
@@ -101,21 +96,43 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
                 // ROS_WARN("Could not estimate planar model from given data");
                 break;
             }
+            // For RVIZ
             extract_indices_.setInputCloud(cloud_filtered);
             extract_indices_.setIndices(inliers);
             extract_indices_.setNegative(false);
             extract_indices_.filter(*cloud_p);
             pcl::toROSMsg(*cloud_p, cloud_out);
             cloud_pub_.publish(cloud_out);
+            // For convex hull nodelet
             project_inliers_.setInputCloud(cloud_p);
             project_inliers_.setModelCoefficients(coeffs);
             project_inliers_.filter(*cloud_projected);
-            pcl::toROSMsg(*cloud_projected, cloud_filtered_out);
-            if(i == 0){
-                cloud_filtered1_pub_.publish(cloud_filtered_out);
-            }else{
-                cloud_filtered2_pub_.publish(cloud_filtered_out);
+            pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_hull (new pcl::PointCloud<pcl::PointXYZ>);
+            pcl::ConvexHull<pcl::PointXYZ> chull;
+            chull.setInputCloud (cloud_projected);
+            // chull.setAlpha (0.1);
+            chull.reconstruct (*cloud_hull);
+            pcl::toROSMsg(*cloud_hull, cloud_filtered_out);
+            cloud_filtered_pub_.publish(cloud_filtered_out);
+
+            geometry_msgs::PolygonStamped p = geometry_msgs::PolygonStamped();
+            p.header.frame_id = "camera_base";
+            for(sensor_msgs::PointCloud2ConstIterator<float> it(cloud_filtered_out, "x"); it != it.end();++it)
+            {
+                geometry_msgs::Point32 pt;
+                pt.x = it[0];
+                pt.y = it[1];
+                pt.z = it[2];
+                plane_msg.hull_vertices.push_back(pt);
+                p.polygon.points.push_back(pt);
             }
+            poly_pub_.publish(p);
+            plane_arr_msg.planes.push_back(plane_msg);
+            // if(i == 0){
+            //     cloud_filtered1_pub_.publish(cloud_filtered_out);
+            // }else{
+            //     cloud_filtered2_pub_.publish(cloud_filtered_out);
+            // }
             // std::stringstream ss3;
             // ss3 << "/home/cuhsailus/Desktop/Research/22_academic_year/surface_normals/out_pcds/iter_"<<counter_<<"_" << i << ".pcd";
             // writer_.write<pcl::PointXYZ> (ss3.str(), *cloud_p, false);
@@ -133,8 +150,10 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
             // normal_estimator_.compute(*cloud_normals);
             i++;
         }
+        // ROS_WARN_STREAM("Done filtering cloud.. Ready to run py; i = " << i);
+        plane_pub_.publish(plane_arr_msg);  
         counter_++;
-        process_ = false;
+        // process_ = false;
         // ROS_WARN("Finished processing full pointcloud");
     }
 }

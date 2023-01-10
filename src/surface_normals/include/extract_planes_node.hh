@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <geometry_msgs/PolygonStamped.h>
+#include "surface_normals/PlaneArray.h"
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl-1.8/pcl/ModelCoefficients.h>
 #include <pcl-1.8/pcl/point_types.h>
@@ -21,8 +23,9 @@ class ExtractPlanesNode{
     int counter_;
     bool process_;
     ros::Publisher cloud_pub_;
-    ros::Publisher cloud_filtered1_pub_;
-    ros::Publisher cloud_filtered2_pub_;
+    ros::Publisher cloud_filtered_pub_;
+    ros::Publisher plane_pub_;
+    ros::Publisher poly_pub_;
     ros::Subscriber cloud_sub_;
     pcl::VoxelGrid<pcl::PCLPointCloud2> downsample_;
     // pcl::SACSegmentation<pcl::PointXYZ> seg_;
@@ -39,9 +42,10 @@ class ExtractPlanesNode{
     public:
     ExtractPlanesNode(ros::NodeHandle *nh)
     {
-        cloud_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisalus_plane_output", 1);
-        cloud_filtered1_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisalus_filtered1_plane_output", 1);
-        cloud_filtered2_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisalus_filtered2_plane_output", 1);
+        cloud_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisailus_plane_output", 1);
+        cloud_filtered_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisailus_filtered_plane_output", 1);
+        plane_pub_ = nh->advertise<surface_normals::PlaneArray>("plane_fit", 1);
+        poly_pub_ = nh->advertise<geometry_msgs::PolygonStamped>("poly", 1);
         std::string cloud_topic;
         nh->getParam("cloud_topic", cloud_topic);
         cloud_sub_ = nh->subscribe(cloud_topic, 1, &ExtractPlanesNode::cloud_cb, this);
@@ -57,7 +61,7 @@ class ExtractPlanesNode{
         sac_from_norm_.setNormalDistanceWeight(normal_distance_weight);
         sac_from_norm_.setMethodType(pcl::SAC_RANSAC);
         sac_from_norm_.setMaxIterations(1000);
-        sac_from_norm_.setDistanceThreshold(0.03);
+        sac_from_norm_.setDistanceThreshold(0.01);
         project_inliers_.setModelType(pcl::SACMODEL_NORMAL_PLANE);
         counter_ = 0;
         process_ = true;
