@@ -1,7 +1,7 @@
 <launch>
     <arg name="cloud_topic" default="/passthrough_z/output"/>
     <arg name="normal_distance_weight" default="0.5"/>
-    <node name="plane_segmenter" pkg="surface_normals" type="extract_planes_node">
+    <node name="plane_segmenter" pkg="surface_normals" type="extract_planes_node" output="screen">
         <param name="cloud_topic" value="$(arg cloud_topic)"/>
         <param name="normal_distance_weights" value="$(arg normal_distance_weight)"/>
     </node> 

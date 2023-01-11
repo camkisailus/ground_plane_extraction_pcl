@@ -6,6 +6,8 @@
 #include <geometry_msgs/Point32.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <cddlib/cdd.h>
+#include <cddlib/cddmp.h>
+#include <cddlib/setoper.h>
 #define PI 3.14159265
 
 
@@ -85,6 +87,7 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
 
             geometry_msgs::PolygonStamped p = geometry_msgs::PolygonStamped();
             p.header.frame_id = "camera_base";
+            std::vector<std::vector<double>> vertices;
             for(sensor_msgs::PointCloud2ConstIterator<float> it(cloud_hull_out, "x"); it != it.end();++it)
             {
                 geometry_msgs::Point32 pt;
@@ -93,7 +96,40 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
                 pt.z = it[2];
                 plane_msg.hull_vertices.push_back(pt);
                 p.polygon.points.push_back(pt);
+                vertices.push_back({pt.x, pt.y, pt.z});
             }
+            dd_set_global_constants();
+            dd_MatrixPtr input_vertices = dd_CreateMatrix(4,2);
+            dd_set_si(input_vertices->matrix[0][0], 1);
+            dd_set_si(input_vertices->matrix[0][1], 1);
+            dd_set_si(input_vertices->matrix[1][0], 1);
+            dd_set_si(input_vertices->matrix[1][1], -1);
+            dd_set_si(input_vertices->matrix[2][0], -1);
+            dd_set_si(input_vertices->matrix[2][1], 1);
+            dd_set_si(input_vertices->matrix[3][0], -1);
+            dd_set_si(input_vertices->matrix[3][1], -1);
+            // dd_MatrixPtr input_vertices = dd_CreateMatrix(vertices.size(), vertices[0].size());
+            // for(int i = 0; i < vertices.size(); i++){
+            //     for(int j = 0; j < vertices[i].size(); j++){
+            //         dd_set_si(input_vertices->matrix[i][j], vertices[i][j]);
+            //     }
+            // }
+            dd_ErrorType err = dd_NoError;
+            dd_PolyhedraPtr poly = dd_DDMatrix2Poly(input_vertices, &err);
+            if(err != dd_NoError){
+                // Handle Error
+                ROS_WARN_STREAM("Error in dd_DDMatrix2Poly");
+            }else{
+                dd_MatrixPtr A = dd_CopyInequalities(poly);
+                dd_MatrixPtr G = dd_CopyGenerators(poly);
+                ROS_WARN_STREAM("Inequalities");
+                dd_WriteMatrix(stdout, A);
+                ROS_WARN_STREAM("Generators");
+                dd_WriteMatrix(stdout, G);
+                ROS_WARN_STREAM("################################################");
+            }
+            dd_FreeMatrix(input_vertices);
+            dd_FreePolyhedra(poly);
             // Publish polygon to RVIZ
             poly_pub_.publish(p);
             // Append plane msg to plane_arr msg
@@ -110,7 +146,9 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
             cloud_normals.swap(cloud_n);
             i++;
         }
-        plane_pub_.publish(plane_arr_msg);  
+        plane_pub_.publish(plane_arr_msg); 
+        dd_free_global_constants(); 
+        process_ = false;
     }
 }
 

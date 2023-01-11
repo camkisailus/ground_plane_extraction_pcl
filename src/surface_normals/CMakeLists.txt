@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(surface_normals)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11 -lcdd)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -107,7 +107,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+  INCLUDE_DIRS include
 #  LIBRARIES surface_normals
  CATKIN_DEPENDS message_runtime #pcl_conversions pcl_ros roscpp sensor_msgs
 #  DEPENDS system_lib
@@ -123,8 +123,10 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
+  /usr/local/include/libcdd
 )
 link_directories(${PCL_LIBRARY_DIRS})
+link_directories(/usr/local/include/libcdd)
 add_definitions(${PCL_DEFINITONS})
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -155,7 +157,7 @@ add_executable(extract_planes_node src/extract_planes_node.cc)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(extract_planes_node
-  ${catkin_LIBRARIES} ${PCL_LIBRARIES}
+  ${catkin_LIBRARIES} ${PCL_LIBRARIES} /usr/local/lib/libcdd.so.0
 )
 # target_link_libraries(planar_segmentation ${PCL_LIBRARIES})
 # target_link_libraries(extract_indices ${PCL_LIBRARIES})
