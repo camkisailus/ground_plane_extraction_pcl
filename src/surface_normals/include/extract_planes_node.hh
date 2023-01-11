@@ -23,37 +23,29 @@ class ExtractPlanesNode{
     int counter_;
     bool process_;
     ros::Publisher cloud_pub_;
-    ros::Publisher cloud_filtered_pub_;
+    ros::Publisher hull_pub_;
     ros::Publisher plane_pub_;
     ros::Publisher poly_pub_;
     ros::Subscriber cloud_sub_;
     pcl::VoxelGrid<pcl::PCLPointCloud2> downsample_;
-    // pcl::SACSegmentation<pcl::PointXYZ> seg_;
     pcl::SACSegmentationFromNormals<pcl::PointXYZ, pcl::Normal> sac_from_norm_;
     pcl::ExtractIndices<pcl::PointXYZ> extract_indices_;
     pcl::ExtractIndices<pcl::Normal> extract_normal_indices_;
     pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> normal_estimator_;
     pcl::ProjectInliers<pcl::PointXYZ> project_inliers_;
     tf::TransformListener listener_;
-    // pcl::PCDWriter writer_;
-    // pcl::search::KdTree<pcl::PointXYZ>::Ptr tree_;
 
 
     public:
     ExtractPlanesNode(ros::NodeHandle *nh)
     {
-        cloud_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisailus_plane_output", 1);
-        cloud_filtered_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisailus_filtered_plane_output", 1);
+        cloud_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisailus_plane", 1);
+        hull_pub_ = nh->advertise<sensor_msgs::PointCloud2>("kisailus_plane_hull", 1);
         plane_pub_ = nh->advertise<surface_normals::PlaneArray>("plane_fit", 1);
         poly_pub_ = nh->advertise<geometry_msgs::PolygonStamped>("poly", 1);
         std::string cloud_topic;
         nh->getParam("cloud_topic", cloud_topic);
         cloud_sub_ = nh->subscribe(cloud_topic, 1, &ExtractPlanesNode::cloud_cb, this);
-        // seg_.setOptimizeCoefficients(true);
-        // seg_.setModelType(pcl::SACMODEL_PLANE);
-        // seg_.setMethodType(pcl::SAC_RANSAC);
-        // seg_.setMaxIterations(1000);
-        // seg_.setDistanceThreshold(0.05);
         sac_from_norm_.setOptimizeCoefficients(true);
         sac_from_norm_.setModelType(pcl::SACMODEL_NORMAL_PLANE);
         float normal_distance_weight;
@@ -61,9 +53,8 @@ class ExtractPlanesNode{
         sac_from_norm_.setNormalDistanceWeight(normal_distance_weight);
         sac_from_norm_.setMethodType(pcl::SAC_RANSAC);
         sac_from_norm_.setMaxIterations(1000);
-        sac_from_norm_.setDistanceThreshold(0.01);
+        sac_from_norm_.setDistanceThreshold(0.03);
         project_inliers_.setModelType(pcl::SACMODEL_NORMAL_PLANE);
-        counter_ = 0;
         process_ = true;
     }
     void cloud_cb(const sensor_msgs::PointCloud2ConstPtr&);

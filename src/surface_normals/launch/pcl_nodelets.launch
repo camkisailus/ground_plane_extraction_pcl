@@ -1,0 +1,33 @@
+<launch>
+  <arg name="raw_cloud_topic" default="points2"/>
+  <!-- Start a nodelet manager -->
+  <node pkg="nodelet" type="nodelet" name="pcl_manager" args="manager" output="log" />
+  
+  <!-- Crop x bounds-->
+  <node pkg="nodelet" type="nodelet" name="passthrough_x" args="load pcl/PassThrough pcl_manager" output="log">
+    <remap from="~input" to="$(arg raw_cloud_topic)"/>
+    <rosparam>
+      filter_field_name: x
+      filter_limit_min: -1.5
+      filter_limit_max: 1.5
+    </rosparam>
+  </node>
+  <!-- Crop y bounds-->
+  <node pkg="nodelet" type="nodelet" name="passthrough_y" args="load pcl/PassThrough pcl_manager" output="log">
+    <remap from="~input" to="/passthrough_x/output"/>
+    <rosparam>
+      filter_field_name: y
+      filter_limit_min: -1.5
+      filter_limit_max: 1.5
+    </rosparam>
+  </node>
+  <!-- Crop z bounds -->
+  <node pkg="nodelet" type="nodelet" name="passthrough_z" args="load pcl/PassThrough pcl_manager" output="log">
+    <remap from="~input" to="/passthrough_y/output"/>
+    <rosparam>
+      filter_field_name: z
+      filter_limit_min: 0.0
+      filter_limit_max: 5.0
+    </rosparam>
+  </node>
+</launch>
