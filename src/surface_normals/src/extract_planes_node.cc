@@ -66,6 +66,7 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
             surface_normals::Plane plane_msg;
             plane_msg.header.frame_id = "camera_base";
             plane_msg.slope = slope;
+            ROS_WARN_STREAM("Slope = " << slope);
             // Publish segmented cloud for RVIZ
             extract_indices_.setInputCloud(cloud_filtered);
             extract_indices_.setIndices(inliers);
@@ -96,24 +97,17 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
                 pt.z = it[2];
                 plane_msg.hull_vertices.push_back(pt);
                 p.polygon.points.push_back(pt);
-                vertices.push_back({pt.x, pt.y, pt.z});
+                vertices.push_back({1, pt.x, pt.y});
             }
             dd_set_global_constants();
-            dd_MatrixPtr input_vertices = dd_CreateMatrix(4,2);
-            dd_set_si(input_vertices->matrix[0][0], 1);
-            dd_set_si(input_vertices->matrix[0][1], 1);
-            dd_set_si(input_vertices->matrix[1][0], 1);
-            dd_set_si(input_vertices->matrix[1][1], -1);
-            dd_set_si(input_vertices->matrix[2][0], -1);
-            dd_set_si(input_vertices->matrix[2][1], 1);
-            dd_set_si(input_vertices->matrix[3][0], -1);
-            dd_set_si(input_vertices->matrix[3][1], -1);
-            // dd_MatrixPtr input_vertices = dd_CreateMatrix(vertices.size(), vertices[0].size());
-            // for(int i = 0; i < vertices.size(); i++){
-            //     for(int j = 0; j < vertices[i].size(); j++){
-            //         dd_set_si(input_vertices->matrix[i][j], vertices[i][j]);
-            //     }
-            // }
+            dd_MatrixPtr input_vertices = dd_CreateMatrix(vertices.size(), vertices[0].size()); // N x dim
+            input_vertices->representation = dd_Generator;
+            for(int i = 0; i < vertices.size(); i++){
+                for(int j = 0; j < vertices[0].size(); j++){
+                    dd_set_d(input_vertices->matrix[i][j], vertices[i][j]);
+                }
+            }
+            // dd_WriteMatrix(stdout, input_vertices);
             dd_ErrorType err = dd_NoError;
             dd_PolyhedraPtr poly = dd_DDMatrix2Poly(input_vertices, &err);
             if(err != dd_NoError){
@@ -121,12 +115,22 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
                 ROS_WARN_STREAM("Error in dd_DDMatrix2Poly");
             }else{
                 dd_MatrixPtr A = dd_CopyInequalities(poly);
-                dd_MatrixPtr G = dd_CopyGenerators(poly);
-                ROS_WARN_STREAM("Inequalities");
-                dd_WriteMatrix(stdout, A);
-                ROS_WARN_STREAM("Generators");
-                dd_WriteMatrix(stdout, G);
-                ROS_WARN_STREAM("################################################");
+                // dd_rowrange num_rows = A->rowsize;
+                // dd_colrange num_cols = A->colsize;
+                // dd_Amatrix mat = A->matrix;
+                for(int i = 0; i < A->rowsize; i++){
+                    for(int j = 0; j < A->colsize; j++){
+                        if(j == 0){
+                            plane_msg.b_vector.push_back(A->matrix[i][j][0]); // data in mat is stored as mytype (double [1])
+                        }else{
+                            plane_msg.A_matrix.push_back(-1.0 * A->matrix[i][j][0]);
+                        }
+                    }
+                }
+                // ROS_WARN_STREAM("Num rows: " << num_rows << " Num cols: "<< num_cols);
+                // ROS_WARN_STREAM("Inequalities");
+                // dd_WriteMatrix(stdout, A);
+                dd_FreeMatrix(A);
             }
             dd_FreeMatrix(input_vertices);
             dd_FreePolyhedra(poly);
@@ -148,7 +152,7 @@ void ExtractPlanesNode::cloud_cb(const sensor_msgs::PointCloud2ConstPtr& input)
         }
         plane_pub_.publish(plane_arr_msg); 
         dd_free_global_constants(); 
-        process_ = false;
+        // process_ = false;
     }
 }
 
